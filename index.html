@@ -643,6 +643,22 @@
     .lightbox-video-touch{ pointer-events:auto; }
   }
 
+  .tap-feedback{
+    position:absolute; top:50%; left:50%;
+    width:60px; height:60px;
+    transform:translate(-50%,-50%) scale(0.7);
+    border-radius:50%;
+    background:rgba(5,5,5,0.55);
+    backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  .tap-feedback.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  .tap-feedback svg{ width:26px; height:26px; }
+
   .lightbox-info{ padding:18px 20px 24px; }
   .lightbox-info-top{
     display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
@@ -882,87 +898,96 @@
   /* ========================================================= */
 
   // ===== 下拉篩選選單 =====
-  const dropdown = document.getElementById('artist-dropdown');
-  const dropdownTrigger = document.getElementById('dropdown-trigger');
-  const dropdownPanel = document.getElementById('dropdown-panel');
-  const dropdownLabel = document.getElementById('dropdown-label');
+  try{
+    var dropdown = document.getElementById('artist-dropdown');
+    var dropdownTrigger = document.getElementById('dropdown-trigger');
+    var dropdownPanel = document.getElementById('dropdown-panel');
+    var dropdownLabel = document.getElementById('dropdown-label');
 
-  dropdownTrigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isOpen = dropdown.classList.toggle('open');
-    dropdownTrigger.setAttribute('aria-expanded', isOpen);
-  });
-  document.addEventListener('click', () => {
-    dropdown.classList.remove('open');
-    dropdownTrigger.setAttribute('aria-expanded', 'false');
-  });
-  document.addEventListener('keydown', (e) => {
-    if(e.key === 'Escape'){
+    dropdownTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dropdown.classList.toggle('open');
+      dropdownTrigger.setAttribute('aria-expanded', isOpen);
+    });
+    document.addEventListener('click', () => {
       dropdown.classList.remove('open');
       dropdownTrigger.setAttribute('aria-expanded', 'false');
-    }
-  });
+    });
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape'){
+        dropdown.classList.remove('open');
+        dropdownTrigger.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }catch(err){ console.error('下拉選單初始化失敗：', err); }
 
   // ===== 搜尋欄位 =====
-  const searchInput = document.getElementById('search-input');
-  searchInput.addEventListener('input', (e) => {
-    currentQuery = e.target.value;
-    if(allVideos.length > 0){
-      displayVideos();
-    }
-  });
+  try{
+    var searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', (e) => {
+      currentQuery = e.target.value;
+      if(allVideos.length > 0){
+        displayVideos();
+      }
+    });
+  }catch(err){ console.error('搜尋欄位初始化失敗：', err); }
 
   // ===== Hero 光暈互動（僅桌機／有精準指標裝置時跟隨游標）=====
-  (function initHeroSpotlight(){
-    const spotlight = document.getElementById('hero-spotlight');
-    const heroEl = document.querySelector('header');
-    const supportsHover = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(!spotlight || !heroEl || !supportsHover || reduceMotion) return;
+  try{
+    (function initHeroSpotlight(){
+      const spotlight = document.getElementById('hero-spotlight');
+      const heroEl = document.querySelector('header');
+      if(!spotlight || !heroEl) return;
+      const supportsHover = window.matchMedia && window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(!supportsHover || reduceMotion) return;
 
-    let targetX = 50, targetY = 42, curX = 50, curY = 42;
-    function lerpFrame(){
-      curX += (targetX - curX) * 0.06;
-      curY += (targetY - curY) * 0.06;
-      spotlight.style.setProperty('--sx', curX + '%');
-      spotlight.style.setProperty('--sy', curY + '%');
+      let targetX = 50, targetY = 42, curX = 50, curY = 42;
+      function lerpFrame(){
+        curX += (targetX - curX) * 0.06;
+        curY += (targetY - curY) * 0.06;
+        spotlight.style.setProperty('--sx', curX + '%');
+        spotlight.style.setProperty('--sy', curY + '%');
+        requestAnimationFrame(lerpFrame);
+      }
+      heroEl.addEventListener('mousemove', (e) => {
+        const rect = heroEl.getBoundingClientRect();
+        targetX = ((e.clientX - rect.left) / rect.width) * 100;
+        targetY = ((e.clientY - rect.top) / rect.height) * 100;
+        spotlight.style.animationPlayState = 'paused';
+      });
+      heroEl.addEventListener('mouseleave', () => {
+        spotlight.style.animationPlayState = 'running';
+      });
       requestAnimationFrame(lerpFrame);
-    }
-    heroEl.addEventListener('mousemove', (e) => {
-      const rect = heroEl.getBoundingClientRect();
-      targetX = ((e.clientX - rect.left) / rect.width) * 100;
-      targetY = ((e.clientY - rect.top) / rect.height) * 100;
-      spotlight.style.animationPlayState = 'paused';
-    });
-    heroEl.addEventListener('mouseleave', () => {
-      spotlight.style.animationPlayState = 'running';
-    });
-    requestAnimationFrame(lerpFrame);
-  })();
+    })();
+  }catch(err){ console.error('Hero 光暈初始化失敗：', err); }
 
   // ===== 捲動進度線 + 回到頂端按鈕 =====
-  const scrollProgressEl = document.getElementById('scroll-progress');
-  const backToTopEl = document.getElementById('back-to-top');
-  let scrollTicking = false;
-  function updateScrollProgress(){
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-    const progress = docHeight > 0 ? Math.min(Math.max(scrollTop / docHeight, 0), 1) : 0;
-    scrollProgressEl.style.transform = `scaleX(${progress})`;
-    backToTopEl.classList.toggle('show', scrollTop > window.innerHeight * 0.6);
-    scrollTicking = false;
-  }
-  window.addEventListener('scroll', () => {
-    if(!scrollTicking){
-      requestAnimationFrame(updateScrollProgress);
-      scrollTicking = true;
-    }
-  }, { passive:true });
+  try{
+    var scrollProgressEl = document.getElementById('scroll-progress');
+    var backToTopEl = document.getElementById('back-to-top');
+    var scrollTicking = false;
+    var updateScrollProgress = function(){
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? Math.min(Math.max(scrollTop / docHeight, 0), 1) : 0;
+      scrollProgressEl.style.transform = `scaleX(${progress})`;
+      backToTopEl.classList.toggle('show', scrollTop > window.innerHeight * 0.6);
+      scrollTicking = false;
+    };
+    window.addEventListener('scroll', () => {
+      if(!scrollTicking){
+        requestAnimationFrame(updateScrollProgress);
+        scrollTicking = true;
+      }
+    }, { passive:true });
 
-  backToTopEl.addEventListener('click', () => {
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top:0, behavior: reduceMotion ? 'auto' : 'smooth' });
-  });
+    backToTopEl.addEventListener('click', () => {
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top:0, behavior: reduceMotion ? 'auto' : 'smooth' });
+    });
+  }catch(err){ console.error('捲動進度／回頂端初始化失敗：', err); }
 
   // ===== 資料載入（YouTube Data API）=====
   let allVideos = [];
@@ -1399,7 +1424,7 @@
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     // 明顯的垂直滑動 → 切換上一首/下一首
-    if(Math.abs(dy) > 55 && Math.abs(dy) > Math.abs(dx) * 1.3){
+    if(Math.abs(dy) > 100 && Math.abs(dy) > Math.abs(dx) * 1.8){
       if(dy < 0) navigateLightbox(1);  // 向上滑 → 下一首
       else navigateLightbox(-1);        // 向下滑 → 上一首
       if(navigator.vibrate) navigator.vibrate(10); // 極輕微觸覺回饋（不支援的裝置會自動略過）
@@ -1414,9 +1439,21 @@
     if(!currentPlayer || typeof currentPlayer.getPlayerState !== 'function') return;
     try{
       const state = currentPlayer.getPlayerState();
-      if(state === 1){ currentPlayer.pauseVideo(); }
-      else{ currentPlayer.playVideo(); }
+      if(state === 1){ currentPlayer.pauseVideo(); showTapFeedback('pause'); }
+      else{ currentPlayer.playVideo(); showTapFeedback('play'); }
     }catch(e){}
+  }
+
+  // 輕點畫面時的短暫視覺回饋，讓使用者確定「有點到」
+  function showTapFeedback(kind){
+    const icon = document.createElement('div');
+    icon.className = 'tap-feedback';
+    icon.innerHTML = kind === 'pause'
+      ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5L19 12L7 19V5Z"/></svg>';
+    lightboxVideoTouch.appendChild(icon);
+    requestAnimationFrame(() => icon.classList.add('show'));
+    setTimeout(() => icon.remove(), 650);
   }
 
   // ---- 捲軸只在實際滑動時短暫顯示，平常維持隱形 ----
