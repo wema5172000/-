@@ -115,8 +115,8 @@
   .hero-spotlight{
     position:absolute; inset:0; z-index:0;
     pointer-events:none;
-    background:radial-gradient(circle at 50% 42%,
-      rgba(255,244,222,0.05), rgba(201,164,99,0.028) 32%, transparent 62%);
+    background:radial-gradient(circle at var(--sx, 50%) var(--sy, 42%),
+      rgba(255,244,222,0.06), rgba(201,164,99,0.032) 32%, transparent 62%);
   }
 
   .hero-waveform{
@@ -444,10 +444,15 @@
     transition:box-shadow .3s ease;
   }
   .card.is-playing .card-frame{
-    box-shadow:0 0 0 1.5px var(--gold), 0 20px 40px -16px rgba(201,164,99,0.35);
     border-radius:4px;
+    animation:nowPlayingGlow 2.4s ease-in-out infinite;
   }
   .card.is-playing .reel{ border-radius:3px 3px 0 0; }
+
+  @keyframes nowPlayingGlow{
+    0%,100%{ box-shadow:0 0 0 1.5px var(--gold), 0 20px 40px -16px rgba(201,164,99,0.32); }
+    50%{ box-shadow:0 0 0 1.5px var(--gold-bright), 0 20px 48px -14px rgba(201,164,99,0.55); }
+  }
 
   .reel{
     position:relative;
@@ -512,11 +517,17 @@
   .card-body{ padding:14px 4px 0; text-align:left; }
   .card-body h3{
     font-family:"Noto Serif TC",serif; font-weight:700; font-size:15px;
-    color:rgba(255,255,255,0.88);
     margin:0; line-height:1.4;
-    transition:color .3s ease;
+    background-image:linear-gradient(100deg,
+      rgba(255,255,255,0.88) 42%, #ffffff 50%, rgba(255,255,255,0.88) 58%);
+    background-size:280% 100%;
+    background-position:280% 0;
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    transition:background-position .7s ease;
   }
-  .card:hover .card-body h3{ color:#ffffff; }
+  .card:hover .card-body h3{ background-position:-60% 0; }
 
   footer{
     text-align:center; padding:56px 24px 64px;
@@ -716,6 +727,8 @@
     .play-trigger svg{ animation:none; }
     .skeleton-thumb, .skeleton-line{ animation:none; }
     .lightbox, .lightbox-panel{ transition:none; }
+    .card.is-playing .card-frame{ animation:none; }
+    .card-body h3{ transition:none; }
     html{ scroll-behavior:auto; }
   }
 
@@ -885,6 +898,30 @@
       }
     });
   }catch(err){ console.error('搜尋欄位初始化失敗：', err); }
+
+  // ===== Hero 光暈跟隨游標（僅桌機／有精準指標裝置）=====
+  // 安全寫法：只更新 CSS 變數改變光暈圓心座標（純重繪），
+  // 完全不使用 transform，不會影響任何子元素的點擊判定
+  try{
+    const spotlight = document.getElementById('hero-spotlight');
+    const heroEl = document.querySelector('header');
+    const supportsHover = window.matchMedia && window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+    if(spotlight && heroEl && supportsHover){
+      let spotlightTicking = false;
+      heroEl.addEventListener('mousemove', (e) => {
+        if(spotlightTicking) return;
+        spotlightTicking = true;
+        requestAnimationFrame(() => {
+          const rect = heroEl.getBoundingClientRect();
+          const sx = ((e.clientX - rect.left) / rect.width) * 100;
+          const sy = ((e.clientY - rect.top) / rect.height) * 100;
+          spotlight.style.setProperty('--sx', sx + '%');
+          spotlight.style.setProperty('--sy', sy + '%');
+          spotlightTicking = false;
+        });
+      });
+    }
+  }catch(err){ console.error('Hero 光暈初始化失敗：', err); }
 
   // ===== 捲動進度線 + 回到頂端按鈕 =====
   try{
