@@ -635,29 +635,6 @@
   .lightbox-video iframe{
     position:absolute; inset:0; width:100%; height:100%; border:none;
   }
-  .lightbox-video-touch{
-    position:absolute; inset:0; z-index:3;
-    pointer-events:none;
-  }
-  @media (hover:none) and (pointer:coarse){
-    .lightbox-video-touch{ pointer-events:auto; }
-  }
-
-  .tap-feedback{
-    position:absolute; top:50%; left:50%;
-    width:60px; height:60px;
-    transform:translate(-50%,-50%) scale(0.7);
-    border-radius:50%;
-    background:rgba(5,5,5,0.55);
-    backdrop-filter:blur(4px);
-    display:flex; align-items:center; justify-content:center;
-    color:#fff;
-    opacity:0;
-    pointer-events:none;
-    transition:opacity .2s ease, transform .2s ease;
-  }
-  .tap-feedback.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
-  .tap-feedback svg{ width:26px; height:26px; }
 
   .lightbox-info{ padding:18px 20px 24px; }
   .lightbox-info-top{
@@ -718,7 +695,7 @@
   .lightbox-close, .lightbox-nav{
     position:fixed; z-index:121;
     display:flex; align-items:center; justify-content:center;
-    width:42px; height:42px;
+    width:48px; height:48px;
     border-radius:50%;
     background:rgba(20,20,20,0.7);
     backdrop-filter:blur(6px);
@@ -732,11 +709,11 @@
   .lightbox.open .lightbox-nav{ opacity:1; pointer-events:auto; }
   .lightbox-close:hover, .lightbox-nav:hover{ border-color:var(--gold-dim); color:var(--gold); }
 
-  .lightbox-close{ top:18px; right:18px; }
-  .lightbox-close svg{ width:16px; height:16px; }
-  .lightbox-nav svg{ width:18px; height:18px; }
-  .lightbox-prev{ top:50%; left:14px; transform:translateY(-50%); }
-  .lightbox-next{ top:50%; right:14px; transform:translateY(-50%); }
+  .lightbox-close{ top:16px; right:16px; }
+  .lightbox-close svg{ width:17px; height:17px; }
+  .lightbox-nav svg{ width:19px; height:19px; }
+  .lightbox-prev{ top:50%; left:12px; transform:translateY(-50%); }
+  .lightbox-next{ top:50%; right:12px; transform:translateY(-50%); }
   .lightbox-nav[disabled]{ opacity:0.25 !important; pointer-events:none; }
 
   body.lightbox-locked{ overflow:hidden; }
@@ -788,6 +765,30 @@
 </style>
 </head>
 <body>
+  <div id="debug-panel" style="position:fixed; top:0; left:0; right:0; z-index:999999; background:#ff0044; color:#fff; font-size:13px; line-height:1.5; padding:10px 12px; font-family:monospace; word-break:break-all; pointer-events:none; box-shadow:0 2px 10px rgba(0,0,0,0.4);">
+    除錯模式：請點擊搜尋欄／按鈕，這裡會顯示實際點到的元素
+  </div>
+  <script>
+    document.addEventListener('touchstart', function(e){
+      const t = e.target;
+      const rect = t.getBoundingClientRect();
+      const info = '點到: <' + (t.tagName||'?').toLowerCase() + '>'
+        + (t.id ? ' id=' + t.id : '')
+        + (t.className && typeof t.className === 'string' ? ' class=' + t.className : '')
+        + ' | 位置 top:' + Math.round(rect.top) + ' left:' + Math.round(rect.left)
+        + ' size:' + Math.round(rect.width) + 'x' + Math.round(rect.height);
+      document.getElementById('debug-panel').textContent = info;
+    }, true);
+    document.addEventListener('click', function(e){
+      const t = e.target;
+      const info = '(click) 點到: <' + (t.tagName||'?').toLowerCase() + '>'
+        + (t.id ? ' id=' + t.id : '')
+        + (t.className && typeof t.className === 'string' ? ' class=' + t.className : '');
+      const panel = document.getElementById('debug-panel');
+      panel.textContent = panel.textContent + '\n' + info;
+    }, true);
+  </script>
+
   <div class="scroll-progress" id="scroll-progress"></div>
   <button class="back-to-top" id="back-to-top" aria-label="回到頂端">
     <svg viewBox="0 0 20 20" fill="none"><path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -868,7 +869,6 @@
     <div class="lightbox-panel" id="lightbox-panel">
       <div class="lightbox-video-wrap">
         <div class="lightbox-video" id="lightbox-video"></div>
-        <div class="lightbox-video-touch" id="lightbox-video-touch"></div>
       </div>
       <div class="lightbox-info">
         <div class="lightbox-info-top">
@@ -1408,53 +1408,6 @@
     if(e.key === 'ArrowLeft') navigateLightbox(-1);
     if(e.key === 'ArrowRight') navigateLightbox(1);
   });
-
-  // ---- 手機手勢：在「影片區域」上下滑動切換上一首/下一首（抖音/Reels 手感）----
-  // 綁定在專門的手勢感應層（而非影片本身），因為 YouTube 播放器是跨網域內容，
-  // 瀏覽器不會把手指在它上面的觸控事件回傳給我們的程式碼——
-  // 這一層只在觸控裝置上啟用，桌機滑鼠操作完全不受影響
-  const lightboxVideoTouch = document.getElementById('lightbox-video-touch');
-  let touchStartX = 0, touchStartY = 0;
-  lightboxVideoTouch.addEventListener('touchstart', (e) => {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, { passive:true });
-
-  lightboxVideoTouch.addEventListener('touchend', (e) => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    // 明顯的垂直滑動 → 切換上一首/下一首
-    if(Math.abs(dy) > 100 && Math.abs(dy) > Math.abs(dx) * 1.8){
-      if(dy < 0) navigateLightbox(1);  // 向上滑 → 下一首
-      else navigateLightbox(-1);        // 向下滑 → 上一首
-      if(navigator.vibrate) navigator.vibrate(10); // 極輕微觸覺回饋（不支援的裝置會自動略過）
-    }else if(Math.abs(dx) < 12 && Math.abs(dy) < 12){
-      // 幾乎沒有位移 → 視為輕點，切換播放/暫停
-      // （感應層會擋住原生播放器的點擊，這裡補回最基本的暫停功能）
-      togglePlayPause();
-    }
-  }, { passive:true });
-
-  function togglePlayPause(){
-    if(!currentPlayer || typeof currentPlayer.getPlayerState !== 'function') return;
-    try{
-      const state = currentPlayer.getPlayerState();
-      if(state === 1){ currentPlayer.pauseVideo(); showTapFeedback('pause'); }
-      else{ currentPlayer.playVideo(); showTapFeedback('play'); }
-    }catch(e){}
-  }
-
-  // 輕點畫面時的短暫視覺回饋，讓使用者確定「有點到」
-  function showTapFeedback(kind){
-    const icon = document.createElement('div');
-    icon.className = 'tap-feedback';
-    icon.innerHTML = kind === 'pause'
-      ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>'
-      : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5L19 12L7 19V5Z"/></svg>';
-    lightboxVideoTouch.appendChild(icon);
-    requestAnimationFrame(() => icon.classList.add('show'));
-    setTimeout(() => icon.remove(), 650);
-  }
 
   // ---- 捲軸只在實際滑動時短暫顯示，平常維持隱形 ----
   let scrollbarHideTimer = null;
