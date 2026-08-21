@@ -447,10 +447,10 @@
 
   .card{
     width:100%; max-width:340px;
-    opacity:0; transform:translateY(24px);
-    transition:opacity .8s cubic-bezier(0.16,1,0.3,1), transform .8s cubic-bezier(0.16,1,0.3,1);
+    opacity:0;
+    transition:opacity .8s cubic-bezier(0.16,1,0.3,1);
   }
-  .card.in-view{ opacity:1; transform:translateY(0); }
+  .card.in-view{ opacity:1; }
 
   .card-frame{
     background:none;
@@ -765,30 +765,6 @@
 </style>
 </head>
 <body>
-  <div id="debug-panel" style="position:fixed; top:0; left:0; right:0; z-index:999999; background:#ff0044; color:#fff; font-size:13px; line-height:1.5; padding:10px 12px; font-family:monospace; word-break:break-all; pointer-events:none; box-shadow:0 2px 10px rgba(0,0,0,0.4);">
-    除錯模式：請點擊搜尋欄／按鈕，這裡會顯示實際點到的元素
-  </div>
-  <script>
-    document.addEventListener('touchstart', function(e){
-      const t = e.target;
-      const rect = t.getBoundingClientRect();
-      const info = '點到: <' + (t.tagName||'?').toLowerCase() + '>'
-        + (t.id ? ' id=' + t.id : '')
-        + (t.className && typeof t.className === 'string' ? ' class=' + t.className : '')
-        + ' | 位置 top:' + Math.round(rect.top) + ' left:' + Math.round(rect.left)
-        + ' size:' + Math.round(rect.width) + 'x' + Math.round(rect.height);
-      document.getElementById('debug-panel').textContent = info;
-    }, true);
-    document.addEventListener('click', function(e){
-      const t = e.target;
-      const info = '(click) 點到: <' + (t.tagName||'?').toLowerCase() + '>'
-        + (t.id ? ' id=' + t.id : '')
-        + (t.className && typeof t.className === 'string' ? ' class=' + t.className : '');
-      const panel = document.getElementById('debug-panel');
-      panel.textContent = panel.textContent + '\n' + info;
-    }, true);
-  </script>
-
   <div class="scroll-progress" id="scroll-progress"></div>
   <button class="back-to-top" id="back-to-top" aria-label="回到頂端">
     <svg viewBox="0 0 20 20" fill="none"><path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
